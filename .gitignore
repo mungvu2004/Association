@@ -1,0 +1,27 @@
+# Bỏ qua thư mục cache của Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Bỏ qua file CSV
+*.csv
+
+# Bỏ qua file log hoặc tạm
+*.log
+*.tmp
+
+# Bỏ qua file môi trường, cấu hình cá nhân
+.env
+*.env
+
+# Bỏ qua các file hệ thống
+.DS_Store
+Thumbs.db
+
+# Nếu dùng Jupyter Notebook
+.ipynb_checkpoints/
+
+# Nếu dùng VSCode hoặc PyCharm
+.vscode/
+.idea/
