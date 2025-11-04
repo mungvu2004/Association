@@ -29,22 +29,22 @@ OUTPUT_ROAD_RULES = os.getenv(
 
 # Cấu hình cho phân tích Quận (District)
 DISTRICT_CONFIG = {
-    'min_support': 0.01,         # 1% - Cho phép rare patterns
-    'min_confidence': 0.5,       # 50% - Giảm để bắt nhiều patterns
-    'min_lift': 1.5,             # Chỉ lấy patterns mạnh (tăng 50%+)
-    'min_quality_score': 0.4,    # confidence × lift >= 0.4
-    'max_rules': 500             # Giới hạn output
+    'min_support': 0.02,         # 2% - Cân bằng giữa tốc độ và độ chính xác
+    'min_confidence': 0.5,       # 30% - Giảm để có nhiều rules hơn
+    'min_lift': 1.2,             # Patterns có ý nghĩa (tăng 20%+)
+    'min_quality_score': 0.3,    # confidence × lift >= 0.3
+    'max_rules': 5000             # Giới hạn output
 }
 
 # Cấu hình cho phân tích Đường (Road)
 ROAD_CONFIG = {
-    'min_support': 0.012,        # 1.2% - Giảm nhẹ
-    'min_confidence': 0.7,       # 70% - Giảm để có nhiều rules
-    'min_lift': 1.3,             # Patterns có ý nghĩa (tăng 30%+)
-    'min_quality_score': 0.5,    # confidence × lift >= 0.5
-    'max_rules': 1000            # Giới hạn output
+    'min_support': 0.01,         # 1% - Giảm để có nhiều patterns
+    'min_confidence': 0.7,       # 40% - Giảm để có nhiều rules
+    'min_lift': 1.2,             # Patterns có ý nghĩa
+    'min_quality_score': 0.4,    # confidence × lift >= 0.4
+    'max_rules': 10000            # Giới hạn output
 }
 
 # --- LOGGING CONFIGURATION ---
 LOG_LEVEL = 'INFO'
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
