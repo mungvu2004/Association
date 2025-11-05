@@ -5,6 +5,7 @@ Tạo tuyến đường từ orders dựa trên association rules đã train
 
 import pandas as pd
 import logging
+import random
 from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -12,17 +13,42 @@ logger = logging.getLogger(__name__)
 
 # Cấu hình
 ORDERS_FILE = 'data/orders.csv'
+DRIVERS_FILE = 'data/drivers.csv'
 DISTRICT_RULES_FILE = 'output/district_rules_trained.csv'
 ROAD_RULES_FILE = 'output/road_rules_trained.csv'
 OUTPUT_ROUTES = 'output/final_routes.csv'
 MAX_ORDERS_PER_ROUTE = 8
 
 
-def load_rules_from_csv(filepath):
+def load_drivers(drivers_file):
+    """
+    Load danh sách drivers từ CSV file.
+    
+    Args:
+        drivers_file: Đường dẫn đến file drivers.csv
+        
+    Returns:
+        List driver IDs đang active
+    """
+    try:
+        df = pd.read_csv(drivers_file)
+        # Lọc drivers có status = 'active'
+        active_drivers = df[df['status'] == 'active']['driver_id'].tolist()
+        logger.info(f"📋 Loaded {len(active_drivers)} active drivers from {drivers_file}")
+        return active_drivers
+    except Exception as e:
+        logger.error(f"❌ Error loading drivers: {e}")
+        # Fallback: Tạo 30 drivers mặc định
+        default_drivers = [f'DRV{i:03d}' for i in range(1, 31)]
+        logger.warning(f"⚠️  Using {len(default_drivers)} default drivers")
+        return default_drivers
+
+
+def load_rules_from_csv(file_path, rule_type='district'):
     """Load rules từ CSV file"""
     import ast
     
-    df = pd.read_csv(filepath)
+    df = pd.read_csv(file_path)
     rules = []
     
     for _, row in df.iterrows():
@@ -124,8 +150,8 @@ def optimize_single_route(route_indices, orders_df, district_rules, road_rules):
     """Tối ưu thứ tự 1 route dựa trên rules quận và đường"""
     route_orders = orders_df.loc[route_indices]
     
-    # Bước 1: Tối ưu thứ tự các QUẬN
-    districts = route_orders['district'].tolist()
+    # Bước 1: Tối ưu thứ tự các QUẬN (unique)
+    districts = route_orders['district'].unique().tolist()  # FIX: Chỉ lấy unique districts
     optimized_districts = optimize_route_order(districts, district_rules)
     
     # Bước 2: Với mỗi quận, tối ưu thứ tự các ĐƯỜNG
@@ -135,7 +161,7 @@ def optimize_single_route(route_indices, orders_df, district_rules, road_rules):
         
         if len(district_orders) > 1:
             # Có nhiều orders trong cùng quận → tối ưu thứ tự đường
-            roads = district_orders['road_name'].tolist()
+            roads = district_orders['road_name'].unique().tolist()  # FIX: Chỉ lấy unique roads
             optimized_roads = optimize_route_order(roads, road_rules)
             
             # Sắp xếp orders theo thứ tự đường đã tối ưu
@@ -153,7 +179,34 @@ def optimize_single_route(route_indices, orders_df, district_rules, road_rules):
     return ordered_indices
 
 
-def generate_routes_from_orders(orders_file, district_rules_file, road_rules_file, output_file=OUTPUT_ROUTES, max_orders_per_route=MAX_ORDERS_PER_ROUTE):
+def assign_drivers_to_routes(routes_count, available_drivers):
+    """
+    Gán ngẫu nhiên driver cho mỗi route
+    
+    Args:
+        routes_count: Số lượng routes cần gán driver
+        available_drivers: List các driver IDs có sẵn
+    
+    Returns:
+        Dictionary mapping route_id -> driver_id
+    """
+    # Nếu có ít driver hơn routes, một driver có thể nhận nhiều routes
+    driver_assignments = {}
+    
+    # Shuffle để random
+    available_pool = available_drivers.copy()
+    random.shuffle(available_pool)
+    
+    for route_idx in range(routes_count):
+        route_id = f"R{route_idx + 1:03d}"
+        # Round-robin nếu hết drivers
+        driver_id = available_pool[route_idx % len(available_pool)]
+        driver_assignments[route_id] = driver_id
+    
+    return driver_assignments
+
+
+def generate_routes_from_orders(orders_file, district_rules_file, road_rules_file, drivers_file, output_file=OUTPUT_ROUTES, max_orders_per_route=MAX_ORDERS_PER_ROUTE):
     """
     Sinh tuyến đường từ orders sử dụng association rules (quận + đường)
     
@@ -161,6 +214,7 @@ def generate_routes_from_orders(orders_file, district_rules_file, road_rules_fil
         orders_file: Path to orders CSV file
         district_rules_file: Path to district rules CSV file
         road_rules_file: Path to road rules CSV file
+        drivers_file: Path to drivers CSV file
         output_file: Path to output routes CSV file
         max_orders_per_route: Maximum orders per route
     
@@ -191,19 +245,31 @@ def generate_routes_from_orders(orders_file, district_rules_file, road_rules_fil
     logger.info(f"\n⚡ Optimizing routes using association rules...")
     logger.info(f"   • Step 1: Optimize district order")
     logger.info(f"   • Step 2: Optimize road order within each district")
+    
+    # Load drivers và gán cho routes
+    available_drivers = load_drivers(drivers_file)
+    driver_assignments = assign_drivers_to_routes(len(routes), available_drivers)
+    logger.info(f"\n👤 Assigning drivers to routes...")
+    logger.info(f"   ✓ Available drivers: {len(available_drivers)}")
+    logger.info(f"   ✓ Routes to assign: {len(routes)}")
+    
     optimized_orders = []
     
     for route_id, route_indices in enumerate(routes, 1):
         if route_id % 5 == 0:
             logger.info(f"   Processing route {route_id}/{len(routes)}...")
         
+        route_id_str = f"R{route_id:03d}"
+        assigned_driver = driver_assignments[route_id_str]
+        
         optimized_indices = optimize_single_route(route_indices, orders_df, district_rules, road_rules)
         
         for seq, idx in enumerate(optimized_indices, 1):
             order_data = orders_df.loc[idx].to_dict()
             order_data.update({
-                'route_id': f"R{route_id:03d}",
-                'sequence': seq
+                'route_id': route_id_str,
+                'sequence': seq,
+                'assigned_driver': assigned_driver
             })
             optimized_orders.append(order_data)
     
@@ -215,6 +281,7 @@ def generate_routes_from_orders(orders_file, district_rules_file, road_rules_fil
     logger.info(f"   ✓ Total routes: {result_df['route_id'].nunique()}")
     logger.info(f"   ✓ Total orders: {len(result_df)}")
     logger.info(f"   ✓ Avg orders/route: {len(result_df) / result_df['route_id'].nunique():.1f}")
+    logger.info(f"   ✓ Drivers assigned: {result_df['assigned_driver'].nunique()}")
     logger.info(f"   ✓ Output saved: {output_file}")
     logger.info("="*70 + "\n")
     
@@ -229,6 +296,7 @@ def main():
     parser.add_argument('--orders', default=ORDERS_FILE, help='Path to orders CSV file')
     parser.add_argument('--district-rules', default=DISTRICT_RULES_FILE, help='Path to district rules CSV file')
     parser.add_argument('--road-rules', default=ROAD_RULES_FILE, help='Path to road rules CSV file')
+    parser.add_argument('--drivers', default=DRIVERS_FILE, help='Path to drivers CSV file')
     parser.add_argument('--output', default=OUTPUT_ROUTES, help='Path to output routes CSV file')
     parser.add_argument('--max-orders', type=int, default=MAX_ORDERS_PER_ROUTE, help='Max orders per route')
     
@@ -239,6 +307,7 @@ def main():
             orders_file=args.orders,
             district_rules_file=args.district_rules,
             road_rules_file=args.road_rules,
+            drivers_file=args.drivers,
             output_file=args.output,
             max_orders_per_route=args.max_orders
         )

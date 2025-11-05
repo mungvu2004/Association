@@ -99,17 +99,30 @@ def generate_association_rules(frequent_itemsets, total_transactions, config):
                 
                 # Tính các metrics
                 support = itemset_support[itemset]
-                antecedent_support = itemset_support.get(antecedent, 0)
+                
+                # Antecedent phải có trong frequent_itemsets
+                if antecedent not in itemset_support:
+                    continue
+                    
+                antecedent_support = itemset_support[antecedent]
                 
                 if antecedent_support == 0:
                     continue
                 
                 confidence = support / antecedent_support
                 
+                # Confidence phải <= 1.0
+                if confidence > 1.0:
+                    continue
+                
                 if confidence < min_confidence:
                     continue
                 
-                consequent_support = itemset_support.get(consequent, 0)
+                # Consequent phải có trong frequent_itemsets
+                if consequent not in itemset_support:
+                    continue
+                    
+                consequent_support = itemset_support[consequent]
                 
                 if consequent_support == 0:
                     lift = 0

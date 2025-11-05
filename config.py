@@ -29,20 +29,20 @@ OUTPUT_ROAD_RULES = os.getenv(
 
 # Cấu hình cho phân tích Quận (District)
 DISTRICT_CONFIG = {
-    'min_support': 0.02,         # 2% - Cân bằng giữa tốc độ và độ chính xác
-    'min_confidence': 0.5,       # 30% - Giảm để có nhiều rules hơn
-    'min_lift': 1.2,             # Patterns có ý nghĩa (tăng 20%+)
-    'min_quality_score': 0.3,    # confidence × lift >= 0.3
-    'max_rules': 5000             # Giới hạn output
+    'min_support': 0.02,         
+    'min_confidence': 0.5,       
+    'min_lift': 1.2,             
+    'min_quality_score': 0.3,    
+    'max_rules': 5000             
 }
 
 # Cấu hình cho phân tích Đường (Road)
 ROAD_CONFIG = {
-    'min_support': 0.01,         # 1% - Giảm để có nhiều patterns
-    'min_confidence': 0.7,       # 40% - Giảm để có nhiều rules
-    'min_lift': 1.2,             # Patterns có ý nghĩa
-    'min_quality_score': 0.4,    # confidence × lift >= 0.4
-    'max_rules': 10000            # Giới hạn output
+    'min_support': 0.01,         
+    'min_confidence': 0.7,       
+    'min_lift': 1.2,             
+    'min_quality_score': 0.4,    
+    'max_rules': 10000            
 }
 
 # --- LOGGING CONFIGURATION ---
